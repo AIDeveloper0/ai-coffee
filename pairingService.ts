@@ -81,11 +81,22 @@ function mockPairings(coffee: Coffee, pastries: Pastry[]): PairingResult[] {
     }));
 }
 
+function logPairingEvent(coffee: Coffee, results: PairingResult[]) {
+  const payload = {
+    timestamp: new Date().toISOString(),
+    coffeeId: coffee.id,
+    pastryIds: results.map((p) => p.pastry.id),
+  };
+  console.log("[analytics]", payload);
+}
+
 export async function getPairings(coffee: Coffee, pastries: Pastry[]): Promise<PairingResult[]> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    return mockPairings(coffee, pastries);
+    const fallback = mockPairings(coffee, pastries);
+    logPairingEvent(coffee, fallback);
+    return fallback;
   }
 
   try {
@@ -103,12 +114,17 @@ export async function getPairings(coffee: Coffee, pastries: Pastry[]): Promise<P
       .filter((item): item is PairingResult => Boolean(item));
 
     if (results.length === 0) {
-      return mockPairings(coffee, pastries);
+      const fallback = mockPairings(coffee, pastries);
+      logPairingEvent(coffee, fallback);
+      return fallback;
     }
 
+    logPairingEvent(coffee, results);
     return results;
   } catch (error) {
     console.error("Pairing error", error);
-    return mockPairings(coffee, pastries);
+    const fallback = mockPairings(coffee, pastries);
+    logPairingEvent(coffee, fallback);
+    return fallback;
   }
 }

@@ -192,6 +192,12 @@ export default function CoffeePairingPage() {
           </p>
         </div>
 
+        <div className={styles.howItWorks}>
+          <span>1) Capture coffee notes (dropdown or free-text/QR)</span>
+          <span>2) AI suggests 2–3 pastries with reasoning</span>
+          <span>3) Add to mock cart and checkout for demo flow</span>
+        </div>
+
         {selectedCoffee && (
           <div className={styles.infoPanel}>
             <div className={styles.infoColumn}>

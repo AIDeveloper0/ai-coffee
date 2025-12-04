@@ -133,7 +133,8 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Denser, nut-infused loaf with lower sugar than standard.",
     tastingNotes: ["banana", "nutty", "moderate sweetness"],
-    image: "/images/banana-bread.jpg",
+    image:
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "croissant",
@@ -143,7 +144,8 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "French butter base with light lamination.",
     tastingNotes: ["buttery", "light", "flaky"],
-    image: "/images/croissant.jpg",
+    image:
+      "https://images.unsplash.com/photo-1509440159596-0259088772df?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "franzbrotchen",
@@ -153,7 +155,8 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Caramelized cinnamon layers.",
     tastingNotes: ["caramel", "cinnamon", "buttery"],
-    image: "/images/franzbrotchen.jpg",
+    image:
+      "https://images.unsplash.com/photo-1509440159596-0249088772aa?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "pain-au-chocolat",
@@ -163,7 +166,8 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Dark chocolate core with butter-rich dough.",
     tastingNotes: ["dark chocolate", "buttery", "sweet"],
-    image: "/images/pain-au-chocolat.jpg",
+    image:
+      "https://images.unsplash.com/photo-1509440159596-0249088772cc?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "zimtknoten",
@@ -173,7 +177,8 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Scandinavian cinnamon twist with cardamom accent.",
     tastingNotes: ["cinnamon", "cardamom", "sweet spice"],
-    image: "/images/zimtknoten.jpg",
+    image:
+      "https://images.unsplash.com/photo-1481390422864-46e6735f4d36?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "kardamomknoten",
@@ -183,6 +188,7 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Spicy-sweet Nordic yeasted bun.",
     tastingNotes: ["cardamom", "sweet spice", "yeasted dough"],
-    image: "/images/kardamomknoten.jpg",
+    image:
+      "https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&w=600&q=80",
   },
 ];

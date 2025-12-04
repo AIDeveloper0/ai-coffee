@@ -52,7 +52,7 @@ export default function CoffeePairingPage() {
         })),
       });
     } catch {
-      setError("Unable to fetch pairings. Please try again.");
+      setError("We hit a snag contacting the pairing AI. Showing backup suggestions.");
     } finally {
       setIsLoading(false);
     }
@@ -78,9 +78,11 @@ export default function CoffeePairingPage() {
           <p className={styles.eyebrow}>Pairings UI · AI assisted</p>
           <h1 className={styles.title}>Coffee × pastry pairing playground</h1>
           <p className={styles.lead}>
-            Select a coffee and fetch AI-backed pastry pairings with pricing and reasoning.
+            Select a coffee and we&apos;ll suggest 2–3 pastries from the Sweet Spot menu that match its tasting notes.
           </p>
-          <p className={styles.note}>Prototype using Sweet Spot Coffee Roasters data.</p>
+          <p className={styles.note}>
+            Prototype for Sweet Spot Coffee Roasters, Munich — made for the AI pairing qualification test.
+          </p>
         </div>
 
         {selectedCoffee && (
@@ -178,7 +180,29 @@ export default function CoffeePairingPage() {
         {error && <div className={styles.error}>{error}</div>}
 
         <div className={styles.results}>
-          {isLoading && <p className={styles.muted}>Steaming your pairings…</p>}
+          {isLoading && (
+            <div className="space-y-3">
+              <p className={styles.muted}>Steaming your pairings…</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse overflow-hidden"
+                  >
+                    <div className="h-16 bg-gradient-to-r from-slate-100 to-slate-200" />
+                    <div className="p-4 space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="h-6 w-16 rounded-full bg-slate-100" />
+                        <span className="h-6 w-20 rounded-full bg-slate-100" />
+                      </div>
+                      <div className="h-4 w-11/12 rounded bg-slate-100" />
+                      <div className="h-3 w-1/2 rounded bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {!isLoading && pairings.length === 0 && !error && (
             <p className={styles.muted}>

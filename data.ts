@@ -39,6 +39,15 @@ export const coffees: Coffee[] = [
     variety: "SL28",
     producer: "Mamuto Single Estate Farm",
   },
+  {
+    id: "sweetspot-ethiopia-filter",
+    name: "Sweetspot Ethiopia (filter example)",
+    origin: "Yirgacheffe, Ethiopia",
+    tastingNotes: ["bergamot", "floral", "citrus", "tea-like"],
+    process: "Washed",
+    variety: "Heirloom",
+    producer: "Smallholder producers",
+  },
 ];
 
 export const pastries: Pastry[] = [

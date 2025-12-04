@@ -12,6 +12,7 @@ export default function CoffeePairingPage() {
   const [pastryList, setPastryList] = useState(pastries);
   const [selectedCoffeeId, setSelectedCoffeeId] = useState<string>(coffees[0]?.id ?? "");
   const [freeTextCoffee, setFreeTextCoffee] = useState("");
+  const [pairingStyle, setPairingStyle] = useState<"balanced" | "contrast" | "complement">("balanced");
   const [pairings, setPairings] = useState<PairingResult[]>([]);
   const [pairingSnapshot, setPairingSnapshot] = useState<
     | {
@@ -25,6 +26,7 @@ export default function CoffeePairingPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [cart, setCart] = useState<{ pastryId: string; quantity: number }[]>([]);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
+  const [lastDurationMs, setLastDurationMs] = useState<number | null>(null);
 
   const [newPastry, setNewPastry] = useState({
     name: "",
@@ -59,14 +61,27 @@ export default function CoffeePairingPage() {
     logEvent({
       type: "pairings_requested",
       coffeeId: selectedCoffee.id,
-      metadata: freeTextCoffee ? { freeTextCoffee } : undefined,
+      metadata: freeTextCoffee ? { freeTextCoffee, style: pairingStyle } : { style: pairingStyle },
     });
     setIsLoading(true);
     setError(null);
     setOrderMessage(null);
+    setLastDurationMs(null);
     try {
-      const contextNote = freeTextCoffee.trim() ? `User described coffee as: ${freeTextCoffee.trim()}` : undefined;
-      const results = await getPairings(selectedCoffee, pastryList, contextNote);
+      const start = performance.now();
+      const contextBits = [
+        pairingStyle === "contrast"
+          ? "Prefer contrast pairings (brightness against richness)."
+          : pairingStyle === "complement"
+          ? "Prefer complementary pairings (matching sweetness/texture)."
+          : "Balanced pairing between coffee and pastry.",
+        freeTextCoffee.trim() ? `User described coffee as: ${freeTextCoffee.trim()}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const results = await getPairings(selectedCoffee, pastryList, contextBits || undefined);
+      const end = performance.now();
+      setLastDurationMs(Math.round(end - start));
       setPairings(results);
       setPairingSnapshot({
         coffee: `${selectedCoffee.name} (${selectedCoffee.tastingNotes.join(", ")})`,
@@ -207,6 +222,16 @@ export default function CoffeePairingPage() {
                 <p className={styles.infoValue}>{selectedCoffee.style}</p>
               </div>
             )}
+            <div className={styles.infoColumnFull}>
+              <p className={styles.infoLabel}>Taste profile</p>
+              <p className={styles.infoValue}>
+                {pairingStyle === "contrast"
+                  ? "We’ll lean into contrasts: brighter pastries to lift richer notes, or richer pastries to cushion acidity."
+                  : pairingStyle === "complement"
+                  ? "We’ll mirror key notes—matching sweetness, spice, or texture for a seamless pairing."
+                  : "We’ll balance sweetness, spice, and body for a harmonious match."}
+              </p>
+            </div>
           </div>
         )}
 
@@ -264,7 +289,19 @@ export default function CoffeePairingPage() {
                 </div>
               )}
             </div>
-            </div>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Pairing style</label>
+            <select
+              className={styles.select}
+              value={pairingStyle}
+              onChange={(e) => setPairingStyle(e.target.value as typeof pairingStyle)}
+            >
+              <option value="balanced">Balanced</option>
+              <option value="contrast">Contrast</option>
+              <option value="complement">Complement</option>
+            </select>
+          </div>
           <div className={styles.field}>
             <label htmlFor="free-text" className={styles.label}>
               Free-text coffee input
@@ -354,6 +391,14 @@ export default function CoffeePairingPage() {
                   <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-semibold border border-white/30">
                     {selectedCoffee.origin}
                   </span>
+                  <span className="px-3 py-1 rounded-full bg-white/10 text-[11px] font-semibold border border-white/20">
+                    Style: {pairingStyle}
+                  </span>
+                  {lastDurationMs !== null && (
+                    <span className="px-3 py-1 rounded-full bg-white/10 text-[11px] font-semibold border border-white/20">
+                      Response: {lastDurationMs} ms
+                    </span>
+                  )}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {selectedCoffee.tastingNotes.map((note) => (
@@ -451,6 +496,20 @@ export default function CoffeePairingPage() {
                   </div>
                 </div>
               )}
+              <div className="rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-800">
+                <p className="font-semibold text-slate-700 mb-2">Insights (live)</p>
+                <div className="flex flex-wrap gap-3 text-[11px]">
+                  <span className="px-2 py-1 rounded-full bg-slate-100 font-semibold">
+                    Events: {analyticsEvents.length}
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-slate-100 font-semibold">
+                    Pairings requested: {analyticsEvents.filter((e) => e.type === "pairings_requested").length}
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-slate-100 font-semibold">
+                    Pastry clicks: {analyticsEvents.filter((e) => e.type === "pastry_clicked").length}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </div>

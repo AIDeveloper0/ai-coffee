@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Coffee Pairing Prototype",
-  description: "Coffee and pastry pairing playground built with Next.js.",
+  title: "AI Coffee Pairings",
+  description: "Prototype for Sweet Spot Coffee Roasters",
 };
 
 export default function RootLayout({
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );

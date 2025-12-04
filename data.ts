@@ -7,6 +7,7 @@ export interface Coffee {
   variety?: string;
   producer?: string;
   roaster?: string;
+  style?: string;
 }
 
 export interface Pastry {
@@ -17,6 +18,7 @@ export interface Pastry {
   currency: "EUR";
   notableDescription: string;
   tastingNotes: string[];
+  image?: string;
 }
 
 export const coffees: Coffee[] = [
@@ -29,6 +31,7 @@ export const coffees: Coffee[] = [
     variety: "Caturra, Colombia",
     producer: "9 small farmers of the Caicedo Community",
     roaster: "Johannes Bayer",
+    style: "Espresso / Milk drinks",
   },
   {
     id: "bluebird-kenia-washed-mamuto-aa",
@@ -38,6 +41,7 @@ export const coffees: Coffee[] = [
     process: "Washed",
     variety: "SL28",
     producer: "Mamuto Single Estate Farm",
+    style: "Guest espresso / Filter",
   },
   {
     id: "sweetspot-ethiopia-filter",
@@ -47,6 +51,76 @@ export const coffees: Coffee[] = [
     process: "Washed",
     variety: "Heirloom",
     producer: "Smallholder producers",
+    style: "Filter",
+  },
+  {
+    id: "sweetspot-colombia-decaf",
+    name: "Sweetspot Colombia Decaf",
+    origin: "Huila, Colombia",
+    tastingNotes: ["caramel", "red apple", "chocolate", "smooth"],
+    process: "EA decaf",
+    variety: "Caturra, Castillo",
+    style: "Espresso / Milk drinks",
+  },
+  {
+    id: "house-espresso",
+    name: "House Espresso",
+    origin: "Brazil / Colombia blend",
+    tastingNotes: ["hazelnut", "milk chocolate", "brown sugar", "low acidity"],
+    process: "Washed / Natural blend",
+    style: "Espresso",
+  },
+  {
+    id: "flat-white",
+    name: "Flat White",
+    origin: "Blend",
+    tastingNotes: ["sweet milk", "chocolate", "balanced body"],
+    style: "Milk drink",
+  },
+  {
+    id: "cappuccino",
+    name: "Cappuccino",
+    origin: "Blend",
+    tastingNotes: ["cocoa", "creamy", "sweet"],
+    style: "Milk drink",
+  },
+  {
+    id: "americano",
+    name: "Americano",
+    origin: "Blend",
+    tastingNotes: ["roasted nuts", "dark chocolate", "balanced"],
+    style: "Black coffee",
+  },
+  {
+    id: "filter-ethiopia-yirg",
+    name: "Filter — Ethiopia Yirgacheffe",
+    origin: "Yirgacheffe, Ethiopia",
+    tastingNotes: ["lemon", "jasmine", "black tea", "high acidity"],
+    process: "Washed",
+    style: "Filter",
+  },
+  {
+    id: "filter-kenya-nyeri",
+    name: "Filter — Kenya Nyeri",
+    origin: "Nyeri, Kenya",
+    tastingNotes: ["blackcurrant", "grapefruit", "winey"],
+    process: "Washed",
+    style: "Filter",
+  },
+  {
+    id: "nomad-rotating",
+    name: "Nomad Guest",
+    origin: "Seasonal rotating",
+    tastingNotes: ["surprise", "adventurous", "varies"],
+    style: "Guest",
+  },
+  {
+    id: "decaf-espresso",
+    name: "Decaf Espresso",
+    origin: "Latin America",
+    tastingNotes: ["chocolate", "almond", "smooth"],
+    process: "Decaf",
+    style: "Espresso",
   },
 ];
 
@@ -59,6 +133,7 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Denser, nut-infused loaf with lower sugar than standard.",
     tastingNotes: ["banana", "nutty", "moderate sweetness"],
+    image: "/images/banana-bread.jpg",
   },
   {
     id: "croissant",
@@ -68,6 +143,7 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "French butter base with light lamination.",
     tastingNotes: ["buttery", "light", "flaky"],
+    image: "/images/croissant.jpg",
   },
   {
     id: "franzbrotchen",
@@ -77,6 +153,7 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Caramelized cinnamon layers.",
     tastingNotes: ["caramel", "cinnamon", "buttery"],
+    image: "/images/franzbrotchen.jpg",
   },
   {
     id: "pain-au-chocolat",
@@ -86,6 +163,7 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Dark chocolate core with butter-rich dough.",
     tastingNotes: ["dark chocolate", "buttery", "sweet"],
+    image: "/images/pain-au-chocolat.jpg",
   },
   {
     id: "zimtknoten",
@@ -95,6 +173,7 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Scandinavian cinnamon twist with cardamom accent.",
     tastingNotes: ["cinnamon", "cardamom", "sweet spice"],
+    image: "/images/zimtknoten.jpg",
   },
   {
     id: "kardamomknoten",
@@ -104,5 +183,6 @@ export const pastries: Pastry[] = [
     currency: "EUR",
     notableDescription: "Spicy-sweet Nordic yeasted bun.",
     tastingNotes: ["cardamom", "sweet spice", "yeasted dough"],
+    image: "/images/kardamomknoten.jpg",
   },
 ];

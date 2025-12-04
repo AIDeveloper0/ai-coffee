@@ -108,7 +108,11 @@ function logPairingEvent(coffee: Coffee, results: PairingResult[]) {
   console.log("[analytics]", payload);
 }
 
-export async function getPairings(coffee: Coffee, pastries: Pastry[]): Promise<PairingResult[]> {
+export async function getPairings(
+  coffee: Coffee,
+  pastries: Pastry[],
+  contextNote?: string
+): Promise<PairingResult[]> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -118,7 +122,10 @@ export async function getPairings(coffee: Coffee, pastries: Pastry[]): Promise<P
   }
 
   try {
-    const prompt = buildPrompt(coffee, pastries);
+    const prompt = buildPrompt(
+      { ...coffee, tastingNotes: contextNote ? [...coffee.tastingNotes, contextNote] : coffee.tastingNotes },
+      pastries
+    );
     const data = await fetchFromOpenAI(prompt, apiKey);
     const raw = parsePairings(data.choices?.[0]?.message?.content);
 

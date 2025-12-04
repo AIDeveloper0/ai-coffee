@@ -341,6 +341,12 @@
   box-shadow: 0 12px 30px rgba(99, 102, 241, 0.32);
 }
 
+.buttonSecondary {
+  background: #e2e8f0;
+  color: #0f172a;
+  box-shadow: none;
+}
+
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

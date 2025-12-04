@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { coffees, pastries } from "@/data";
 import type { Coffee } from "@/data";
 import { analyticsEvents, getPairings, type PairingResult } from "@/pairingService";
+import { logEvent } from "@/lib/analytics";
 import styles from "./page.module.css";
 
 export default function CoffeePairingPage() {
@@ -39,6 +40,7 @@ export default function CoffeePairingPage() {
 
   const handleGetPairings = async () => {
     if (!selectedCoffee) return;
+    logEvent({ type: "pairings_requested", coffeeId: selectedCoffee.id });
     setIsLoading(true);
     setError(null);
     try {
@@ -164,10 +166,11 @@ export default function CoffeePairingPage() {
                         selectedCoffeeId === coffee.id ? styles.optionActive : ""
                       }`}
                       onClick={() => {
-                        setSelectedCoffeeId(coffee.id);
-                        setIsDropdownOpen(false);
-                      }}
-                    >
+        setSelectedCoffeeId(coffee.id);
+        setIsDropdownOpen(false);
+        logEvent({ type: "coffee_selected", coffeeId: coffee.id });
+      }}
+    >
                       <div className={styles.optionHeader}>
                         <p className={styles.optionTitle}>{coffee.name}</p>
                         {selectedCoffeeId === coffee.id && <span className={styles.dot} />}
@@ -256,6 +259,7 @@ export default function CoffeePairingPage() {
                   <article
                     key={pastry.id}
                     className="group rounded-2xl bg-white shadow-md hover:shadow-2xl border border-slate-100 overflow-hidden transition transform hover:-translate-y-1"
+                    onClick={() => logEvent({ type: "pastry_clicked", coffeeId: selectedCoffee.id, pastryId: pastry.id })}
                   >
                     <div className="bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 px-4 py-3 flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -286,6 +290,14 @@ export default function CoffeePairingPage() {
                         <button
                           type="button"
                           className="px-3 py-1 rounded-full bg-slate-100 text-slate-900 font-semibold text-xs hover:bg-blue-50 hover:text-blue-700 transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            logEvent({
+                              type: "add_to_cart",
+                              coffeeId: selectedCoffee.id,
+                              pastryId: pastry.id,
+                            });
+                          }}
                         >
                           Pair
                         </button>

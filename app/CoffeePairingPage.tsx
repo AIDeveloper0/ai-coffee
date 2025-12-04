@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { coffees, pastries } from "@/data";
 import type { Coffee } from "@/data";
-import { getPairings, type PairingResult } from "@/pairingService";
+import { analyticsEvents, getPairings, type PairingResult } from "@/pairingService";
 import styles from "./page.module.css";
 
 export default function CoffeePairingPage() {
@@ -56,6 +56,20 @@ export default function CoffeePairingPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDownloadAnalytics = () => {
+    const blob = new Blob([JSON.stringify(analyticsEvents, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "analytics-events.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -289,6 +303,15 @@ export default function CoffeePairingPage() {
                   <pre className="whitespace-pre-wrap break-words text-xs bg-white rounded-lg border border-slate-200 p-3 shadow-inner">
                     {JSON.stringify(pairingSnapshot, null, 2)}
                   </pre>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleDownloadAnalytics}
+                      className="px-3 py-1 rounded-full bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 transition"
+                    >
+                      Download analytics JSON
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -5,6 +5,15 @@ export interface PairingResult {
   reason: string;
 }
 
+export type AnalyticsEvent = {
+  type: string;
+  coffeeId: string;
+  pastryIds: string[];
+  timestamp: string;
+};
+
+export const analyticsEvents: AnalyticsEvent[] = [];
+
 const MODEL = "gpt-4o-mini";
 
 function buildPrompt(coffee: Coffee, pastries: Pastry[]): string {
@@ -83,12 +92,19 @@ function mockPairings(coffee: Coffee, pastries: Pastry[]): PairingResult[] {
 
 function logPairingEvent(coffee: Coffee, results: PairingResult[]) {
   const payload = {
+    type: "pairing_generated",
     timestamp: new Date().toISOString(),
     coffeeId: coffee.id,
     pastryIds: results.map((p) => p.pastry.id),
     pastryNames: results.map((p) => p.pastry.name),
     tastingNotes: coffee.tastingNotes,
   };
+  analyticsEvents.push({
+    type: payload.type,
+    timestamp: payload.timestamp,
+    coffeeId: payload.coffeeId,
+    pastryIds: payload.pastryIds,
+  });
   console.log("[analytics]", payload);
 }
 

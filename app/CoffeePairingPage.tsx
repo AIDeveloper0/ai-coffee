@@ -168,7 +168,7 @@ export default function CoffeePairingPage() {
 
           {!isLoading && pairings.length === 0 && !error && (
             <p className={styles.muted}>
-              No pairings yet. Choose a coffee and let the barista AI get to work.
+              Select a coffee and click “Get pairings” to see recommended pastries.
             </p>
           )}
 

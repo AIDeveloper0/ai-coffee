@@ -1,9 +1,7 @@
-import dynamic from "next/dynamic";
-import CoffeePairingPage from "./CoffeePairingPage";
+"use client";
 
-const AnalyticsDebugPanel = dynamic(() => import("@/components/AnalyticsDebugPanel"), {
-  ssr: false,
-});
+import CoffeePairingPage from "./CoffeePairingPage";
+import AnalyticsDebugPanel from "@/components/AnalyticsDebugPanel";
 
 export default function Home() {
   return (

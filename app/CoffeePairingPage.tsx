@@ -9,6 +9,13 @@ import styles from "./page.module.css";
 export default function CoffeePairingPage() {
   const [selectedCoffeeId, setSelectedCoffeeId] = useState<string>(coffees[0]?.id ?? "");
   const [pairings, setPairings] = useState<PairingResult[]>([]);
+  const [pairingSnapshot, setPairingSnapshot] = useState<
+    | {
+        coffee: string;
+        pairing: { pastry: string; reason: string }[];
+      }
+    | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -37,6 +44,13 @@ export default function CoffeePairingPage() {
     try {
       const results = await getPairings(selectedCoffee, pastries);
       setPairings(results);
+      setPairingSnapshot({
+        coffee: `${selectedCoffee.name} (${selectedCoffee.tastingNotes.join(", ")})`,
+        pairing: results.map((item) => ({
+          pastry: item.pastry.name,
+          reason: item.reason,
+        })),
+      });
     } catch {
       setError("Unable to fetch pairings. Please try again.");
     } finally {
@@ -227,9 +241,10 @@ export default function CoffeePairingPage() {
                       </div>
                       <p className="text-[15px] leading-6 text-slate-800">{reason}</p>
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs text-slate-500">
-                          Notes: {pastry.tastingNotes.join(", ")}
-                        </p>
+                        <div className="text-xs text-slate-500 space-y-1">
+                          <p>Notes: {pastry.notableDescription}</p>
+                          <p className="text-[11px]">Tasting: {pastry.tastingNotes.join(", ")}</p>
+                        </div>
                         <button
                           type="button"
                           className="px-3 py-1 rounded-full bg-slate-100 text-slate-900 font-semibold text-xs hover:bg-blue-50 hover:text-blue-700 transition"
@@ -241,6 +256,17 @@ export default function CoffeePairingPage() {
                   </article>
                 ))}
               </div>
+
+              {pairingSnapshot && (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-800 overflow-auto">
+                  <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-[0.14em]">
+                    Developer view (JSON)
+                  </p>
+                  <pre className="whitespace-pre-wrap break-words text-xs bg-white rounded-lg border border-slate-200 p-3 shadow-inner">
+                    {JSON.stringify(pairingSnapshot, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </div>

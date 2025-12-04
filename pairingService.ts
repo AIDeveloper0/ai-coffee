@@ -86,6 +86,8 @@ function logPairingEvent(coffee: Coffee, results: PairingResult[]) {
     timestamp: new Date().toISOString(),
     coffeeId: coffee.id,
     pastryIds: results.map((p) => p.pastry.id),
+    pastryNames: results.map((p) => p.pastry.name),
+    tastingNotes: coffee.tastingNotes,
   };
   console.log("[analytics]", payload);
 }

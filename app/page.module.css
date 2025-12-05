@@ -517,6 +517,39 @@
   color: #0f172a;
 }
 
+.cardControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.miniStepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.miniStepButton {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.miniStepCount {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 800;
+  color: #0f172a;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));

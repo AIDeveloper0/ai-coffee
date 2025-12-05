@@ -37,6 +37,10 @@ function getInitials(name: string) {
   return parts.slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
+function getCartQuantity(cart: { pastryId: string; quantity: number }[], pastryId: string): number {
+  return cart.find((item) => item.pastryId === pastryId)?.quantity ?? 0;
+}
+
 export default function CoffeePairingPage() {
   const [coffeeList] = useState(coffees);
   const [pastryList, setPastryList] = useState(pastries);
@@ -202,18 +206,18 @@ export default function CoffeePairingPage() {
     }
   };
 
-  const handleAddToCart = (pastry: Pastry) => {
+  const handleAddToCart = (pastry: Pastry, quantity: number = 1) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.pastryId === pastry.id);
       if (existing) {
         return prev.map((item) =>
-          item.pastryId === pastry.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.pastryId === pastry.id ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      return [...prev, { pastryId: pastry.id, quantity: 1 }];
+      return [...prev, { pastryId: pastry.id, quantity: Math.max(1, quantity) }];
     });
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToastMessage(`Added ${pastry.name} to cart`);
+    setToastMessage(`Added ${quantity} x ${pastry.name} to cart. Scroll down for checkout.`);
     toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 2500);
   };
 
@@ -621,21 +625,46 @@ export default function CoffeePairingPage() {
                           <p>Notes: {pastry.notableDescription}</p>
                           <p className="text-[11px]">Tasting: {pastry.tastingNotes.join(", ")}</p>
                         </div>
-                        <button
-                          type="button"
-                          className="px-3 py-1 rounded-full bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition flex items-center gap-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddToCart(pastry);
-                            logEvent({
-                              type: "add_to_cart",
-                              coffeeId: selectedCoffee.id,
-                              pastryId: pastry.id,
-                            });
-                          }}
-                        >
-                          Add to cart
-                        </button>
+                        <div className={styles.cardControls}>
+                          <div className={styles.miniStepper}>
+                            <button
+                              type="button"
+                              className={styles.miniStepButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuantityChange(pastry.id, -1);
+                              }}
+                            >
+                              -
+                            </button>
+                            <span className={styles.miniStepCount}>{getCartQuantity(cart, pastry.id)}</span>
+                            <button
+                              type="button"
+                              className={styles.miniStepButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCart(pastry);
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            className="px-3 py-1 rounded-full bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition flex items-center gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToCart(pastry);
+                              logEvent({
+                                type: "add_to_cart",
+                                coffeeId: selectedCoffee.id,
+                                pastryId: pastry.id,
+                              });
+                            }}
+                          >
+                            Add to cart
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </article>

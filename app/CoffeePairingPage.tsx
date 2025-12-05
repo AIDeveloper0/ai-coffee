@@ -1,15 +1,48 @@
+
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { coffees, pastries } from "@/data";
-import type { Coffee } from "@/data";
+import type { Coffee, Pastry } from "@/data";
 import { analyticsEvents, getPairings, type PairingResult } from "@/pairingService";
 import { logEvent } from "@/lib/analytics";
 import styles from "./page.module.css";
 
+type PairingInsight = {
+  matches: string[];
+  complements: string[];
+};
+
+function buildInsights(coffee: Coffee | undefined, pastry: Pastry): PairingInsight {
+  if (!coffee) {
+    return { matches: [], complements: pastry.tastingNotes };
+  }
+  const matches = pastry.tastingNotes.filter((note) =>
+    coffee.tastingNotes.some((coffeeNote) => {
+      const a = coffeeNote.toLowerCase();
+      const b = note.toLowerCase();
+      return a.includes(b) || b.includes(a);
+    })
+  );
+  const complements = pastry.tastingNotes.filter((note) => !matches.includes(note));
+  return { matches, complements };
+}
+
+function formatTotal(total: number) {
+  return `${total.toFixed(2)} EUR`;
+}
+
+function getInitials(name: string) {
+  const parts = name.split(" ").filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+}
+
 export default function CoffeePairingPage() {
   const [coffeeList] = useState(coffees);
   const [pastryList, setPastryList] = useState(pastries);
+  const [availability, setAvailability] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(pastries.map((p) => [p.id, true]))
+  );
   const [selectedCoffeeId, setSelectedCoffeeId] = useState<string>(coffees[0]?.id ?? "");
   const [freeTextCoffee, setFreeTextCoffee] = useState("");
   const [pairingStyle, setPairingStyle] = useState<"balanced" | "contrast" | "complement">("balanced");
@@ -27,6 +60,7 @@ export default function CoffeePairingPage() {
   const [cart, setCart] = useState<{ pastryId: string; quantity: number }[]>([]);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
   const [lastDurationMs, setLastDurationMs] = useState<number | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const [newPastry, setNewPastry] = useState({
     name: "",
@@ -38,11 +72,58 @@ export default function CoffeePairingPage() {
 
   const [shopName, setShopName] = useState("Sweet Spot Coffee Roasters");
   const [shopLogo, setShopLogo] = useState("");
+
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const requestIdRef = useRef(0);
 
   const selectedCoffee: Coffee | undefined = useMemo(
     () => coffeeList.find((c) => c.id === selectedCoffeeId),
     [coffeeList, selectedCoffeeId]
+  );
+
+  const activeMenu = useMemo(
+    () => pastryList.filter((p) => availability[p.id] !== false),
+    [availability, pastryList]
+  );
+
+  const cartTotal = useMemo(
+    () =>
+      cart.reduce((sum, item) => {
+        const pastry = pastryList.find((p) => p.id === item.pastryId);
+        return sum + (pastry ? pastry.price * item.quantity : 0);
+      }, 0),
+    [cart, pastryList]
+  );
+
+  const flowSteps = useMemo(
+    () => [
+      {
+        label: "Input ready",
+        value: selectedCoffee?.name ?? "Pick a coffee",
+        done: Boolean(selectedCoffeeId),
+      },
+      {
+        label: "Pairing output",
+        value: isLoading ? "Brewing..." : pairings.length > 0 ? `${pairings.length} options` : "Awaiting request",
+        done: pairings.length > 0,
+      },
+      {
+        label: "Cart",
+        value: cart.length > 0 ? `${cart.length} item(s) | ${formatTotal(cartTotal)}` : "Empty",
+        done: cart.length > 0,
+      },
+      {
+        label: "Checkout",
+        value: orderMessage ? "Confirmed" : "Ready when you are",
+        done: Boolean(orderMessage),
+      },
+    ],
+    [cart.length, cartTotal, isLoading, orderMessage, pairings.length, selectedCoffee?.name, selectedCoffeeId]
+  );
+
+  const pairingsWithInsight = useMemo(
+    () => pairings.map((item) => ({ ...item, insight: buildInsights(selectedCoffee, item.pastry) })),
+    [pairings, selectedCoffee]
   );
 
   useEffect(() => {
@@ -58,6 +139,13 @@ export default function CoffeePairingPage() {
 
   const handleGetPairings = async () => {
     if (!selectedCoffee) return;
+    if (activeMenu.length === 0) {
+      setError("No pastries are active. Toggle items on in the admin panel.");
+      return;
+    }
+    const runId = requestIdRef.current + 1;
+    requestIdRef.current = runId;
+
     logEvent({
       type: "pairings_requested",
       coffeeId: selectedCoffee.id,
@@ -79,9 +167,13 @@ export default function CoffeePairingPage() {
       ]
         .filter(Boolean)
         .join(" ");
-      const results = await getPairings(selectedCoffee, pastryList, contextBits || undefined);
+      const results = await getPairings(selectedCoffee, activeMenu, contextBits || undefined);
       const end = performance.now();
+
+      if (requestIdRef.current !== runId) return;
+
       setLastDurationMs(Math.round(end - start));
+      setLastUpdatedAt(new Date().toLocaleTimeString());
       setPairings(results);
       setPairingSnapshot({
         coffee: `${selectedCoffee.name} (${selectedCoffee.tastingNotes.join(", ")})`,
@@ -91,9 +183,12 @@ export default function CoffeePairingPage() {
         })),
       });
     } catch {
+      if (requestIdRef.current !== runId) return;
       setError("We hit a snag contacting the pairing AI. Showing backup suggestions.");
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === runId) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -112,9 +207,10 @@ export default function CoffeePairingPage() {
   const handleQuantityChange = (pastryId: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((item) =>
-          item.pastryId === pastryId ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-        )
+        .map((item) => ({
+          ...item,
+          quantity: item.pastryId === pastryId ? Math.max(0, item.quantity + delta) : item.quantity,
+        }))
         .filter((item) => item.quantity > 0)
     );
   };
@@ -123,11 +219,20 @@ export default function CoffeePairingPage() {
     setCart((prev) => prev.filter((item) => item.pastryId !== pastryId));
   };
 
+  const handleResetCart = () => setCart([]);
+
   const handleCheckout = () => {
     if (!selectedCoffee || cart.length === 0) return;
     const pastryIds = cart.map((item) => item.pastryId);
     logEvent({ type: "checkout", coffeeId: selectedCoffee.id, pastryIds });
-    setOrderMessage("Order confirmed (mock). Thank you!");
+    const summary = cart
+      .map((item) => {
+        const pastry = pastryList.find((p) => p.id === item.pastryId);
+        return pastry ? `${item.quantity} x ${pastry.name}` : null;
+      })
+      .filter(Boolean)
+      .join(", ");
+    setOrderMessage(`Order confirmed for ${shopName}. Items: ${summary}. Total ${formatTotal(cartTotal)}.`);
     setCart([]);
   };
 
@@ -146,6 +251,7 @@ export default function CoffeePairingPage() {
       image: "/images/pastry-placeholder.jpg",
     };
     setPastryList((prev) => [...prev, updated]);
+    setAvailability((prev) => ({ ...prev, [id]: true }));
     setNewPastry({ name: "", origin: "", price: "", notableDescription: "", category: "" });
   };
 
@@ -165,6 +271,10 @@ export default function CoffeePairingPage() {
     URL.revokeObjectURL(url);
   };
 
+  const toggleAvailability = (id: string) => {
+    setAvailability((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.ambient}>
@@ -177,25 +287,43 @@ export default function CoffeePairingPage() {
         <div className={styles.topRow}>
           <div className={styles.badges}>
             <span className={styles.pill}>Live demo</span>
+            <span className={styles.pillSoft}>Input to output ready</span>
           </div>
-          <span className={styles.status}>Sweet Spot Coffee Roasters</span>
+          <div className={styles.shopBadge}>
+            {shopLogo ? (
+              <img src={shopLogo} alt={`${shopName} logo`} className={styles.shopLogo} />
+            ) : (
+              <span className={styles.shopInitials}>{getInitials(shopName || "SS")}</span>
+            )}
+            <span className={styles.status}>{shopName}</span>
+          </div>
         </div>
 
         <div className={styles.headline}>
-          <p className={styles.eyebrow}>Pairings UI · AI assisted</p>
-          <h1 className={styles.title}>Coffee × pastry pairing playground</h1>
+          <p className={styles.eyebrow}>Pairings UI - AI assisted</p>
+          <h1 className={styles.title}>Coffee to pastry pairing playground</h1>
           <p className={styles.lead}>
-            Select a coffee and we&apos;ll suggest 2–3 pastries from the Sweet Spot menu that match its tasting notes.
+            Select a coffee and we will suggest two to three pastries from the {shopName} menu with clear reasoning.
           </p>
-          <p className={styles.note}>
-            Prototype for Sweet Spot Coffee Roasters, Munich — made for the AI pairing qualification test.
-          </p>
+          <p className={styles.note}>Tightened demo flow: input, pairing logic, cart, checkout.</p>
+        </div>
+
+        <div className={styles.flow}>
+          {flowSteps.map((step) => (
+            <div key={step.label} className={`${styles.flowStep} ${step.done ? styles.flowStepDone : ""}`}>
+              <span className={styles.flowDot} aria-hidden />
+              <div>
+                <p className={styles.flowLabel}>{step.label}</p>
+                <p className={styles.flowValue}>{step.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className={styles.howItWorks}>
-          <span>1) Capture coffee notes (dropdown or free-text/QR)</span>
-          <span>2) AI suggests 2–3 pastries with reasoning</span>
-          <span>3) Add to mock cart and checkout for demo flow</span>
+          <span>1) Capture coffee notes (dropdown or free text/QR)</span>
+          <span>2) AI suggests 2-3 pastries with per-item reasoning</span>
+          <span>3) Add to cart and run a clear checkout flow</span>
         </div>
 
         {selectedCoffee && (
@@ -206,11 +334,11 @@ export default function CoffeePairingPage() {
             </div>
             <div className={styles.infoColumn}>
               <p className={styles.infoLabel}>Process</p>
-              <p className={styles.infoValue}>{selectedCoffee.process ?? "—"}</p>
+              <p className={styles.infoValue}>{selectedCoffee.process ?? "N/A"}</p>
             </div>
             <div className={styles.infoColumn}>
               <p className={styles.infoLabel}>Variety</p>
-              <p className={styles.infoValue}>{selectedCoffee.variety ?? "—"}</p>
+              <p className={styles.infoValue}>{selectedCoffee.variety ?? "N/A"}</p>
             </div>
             <div className={styles.infoColumn}>
               <p className={styles.infoLabel}>Tasting notes</p>
@@ -232,10 +360,10 @@ export default function CoffeePairingPage() {
               <p className={styles.infoLabel}>Taste profile</p>
               <p className={styles.infoValue}>
                 {pairingStyle === "contrast"
-                  ? "We’ll lean into contrasts: brighter pastries to lift richer notes, or richer pastries to cushion acidity."
+                  ? "We will lean into contrasts: brighter pastries to lift richer notes, or richer pastries to cushion acidity."
                   : pairingStyle === "complement"
-                  ? "We’ll mirror key notes—matching sweetness, spice, or texture for a seamless pairing."
-                  : "We’ll balance sweetness, spice, and body for a harmonious match."}
+                  ? "We will mirror key notes by matching sweetness, spice, or texture for a seamless pairing."
+                  : "We will balance sweetness, spice, and body for a harmonious match."}
               </p>
             </div>
           </div>
@@ -257,9 +385,7 @@ export default function CoffeePairingPage() {
               >
                 <div className={styles.triggerContent}>
                   <p className={styles.triggerTitle}>{selectedCoffee?.name}</p>
-                  <p className={styles.triggerSubtitle}>
-                    {selectedCoffee?.tastingNotes.join(" · ")}
-                  </p>
+                  <p className={styles.triggerSubtitle}>{selectedCoffee?.tastingNotes.join(" | ")}</p>
                 </div>
                 <span className={styles.chevron} />
               </button>
@@ -270,14 +396,12 @@ export default function CoffeePairingPage() {
                   className={styles.options}
                   aria-activedescendant={selectedCoffeeId}
                 >
-                  {coffees.map((coffee) => (
+                  {coffeeList.map((coffee) => (
                     <button
                       key={coffee.id}
                       role="option"
                       aria-selected={selectedCoffeeId === coffee.id}
-                      className={`${styles.option} ${
-                        selectedCoffeeId === coffee.id ? styles.optionActive : ""
-                      }`}
+                      className={`${styles.option} ${selectedCoffeeId === coffee.id ? styles.optionActive : ""}`}
                       onClick={() => {
                         setSelectedCoffeeId(coffee.id);
                         setIsDropdownOpen(false);
@@ -288,7 +412,7 @@ export default function CoffeePairingPage() {
                         <p className={styles.optionTitle}>{coffee.name}</p>
                         {selectedCoffeeId === coffee.id && <span className={styles.dot} />}
                       </div>
-                      <p className={styles.optionNotes}>{coffee.tastingNotes.join(" · ")}</p>
+                      <p className={styles.optionNotes}>{coffee.tastingNotes.join(" | ")}</p>
                       <p className={styles.optionMeta}>{coffee.origin}</p>
                     </button>
                   ))}
@@ -320,13 +444,17 @@ export default function CoffeePairingPage() {
               onChange={(e) => setFreeTextCoffee(e.target.value)}
               onBlur={() => {
                 if (freeTextCoffee.trim()) {
-                  logEvent({ type: "coffee_selected", coffeeId: selectedCoffee?.id, metadata: { freeText: freeTextCoffee } });
+                  logEvent({
+                    type: "coffee_selected",
+                    coffeeId: selectedCoffee?.id,
+                    metadata: { freeText: freeTextCoffee },
+                  });
                 }
               }}
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className={styles.actionsRow}>
             <button
               className={styles.button}
               type="button"
@@ -347,15 +475,14 @@ export default function CoffeePairingPage() {
               Simulate QR scan
             </button>
           </div>
-
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
 
-        <div className={styles.results}>
+        <div className={styles.results} aria-live="polite">
           {isLoading && (
             <div className="space-y-3">
-              <p className={styles.muted}>Steaming your pairings…</p>
+              <p className={styles.muted}>Steaming your pairings...</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 3 }).map((_, idx) => (
                   <div
@@ -378,9 +505,7 @@ export default function CoffeePairingPage() {
           )}
 
           {!isLoading && pairings.length === 0 && !error && (
-            <p className={styles.muted}>
-              Select a coffee and click “Get pairings” to see recommended pastries.
-            </p>
+            <p className={styles.muted}>Select a coffee and click "Get pairings" to see recommended pastries.</p>
           )}
 
           {!isLoading && pairings.length > 0 && selectedCoffee && (
@@ -405,6 +530,11 @@ export default function CoffeePairingPage() {
                       Response: {lastDurationMs} ms
                     </span>
                   )}
+                  {lastUpdatedAt && (
+                    <span className="px-3 py-1 rounded-full bg-white/10 text-[11px] font-semibold border border-white/20">
+                      Updated: {lastUpdatedAt}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {selectedCoffee.tastingNotes.map((note) => (
@@ -419,7 +549,7 @@ export default function CoffeePairingPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pairings.map(({ pastry, reason }) => (
+                {pairingsWithInsight.map(({ pastry, reason, insight }) => (
                   <article
                     key={pastry.id}
                     className="group rounded-2xl bg-white shadow-md hover:shadow-2xl border border-slate-100 overflow-hidden transition transform hover:-translate-y-1"
@@ -447,15 +577,31 @@ export default function CoffeePairingPage() {
                           <p className="text-[15px] leading-6 text-slate-800">{reason}</p>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {pastry.tastingNotes.map((note) => (
-                          <span
-                            key={note}
-                            className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-semibold border border-sky-100"
-                          >
-                            {note}
-                          </span>
-                        ))}
+                      <div className={styles.pairingInsights}>
+                        <div>
+                          <p className={styles.infoLabel}>Matches</p>
+                          <div className="flex flex-wrap gap-2">
+                            {insight.matches.length === 0 ? (
+                              <span className={styles.subtlePill}>Texture/body focus</span>
+                            ) : (
+                              insight.matches.map((note) => (
+                                <span key={note} className={styles.subtlePill}>
+                                  {note}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className={styles.infoLabel}>Complements</p>
+                          <div className="flex flex-wrap gap-2">
+                            {insight.complements.map((note) => (
+                              <span key={note} className={`${styles.subtlePill} ${styles.subtlePillAlt}`}>
+                                {note}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs text-slate-500 space-y-1">
@@ -523,7 +669,7 @@ export default function CoffeePairingPage() {
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-slate-800">Mock Cart</h3>
+              <h3 className="font-semibold text-slate-800">Cart and checkout</h3>
               <span className="text-xs text-slate-500">Pilot demo</span>
             </div>
             {cart.length === 0 ? (
@@ -548,7 +694,7 @@ export default function CoffeePairingPage() {
                           className="px-2 py-1 rounded bg-white border text-xs"
                           onClick={() => handleQuantityChange(item.pastryId, -1)}
                         >
-                          −
+                          -
                         </button>
                         <span className="text-sm font-semibold">{item.quantity}</span>
                         <button
@@ -573,106 +719,134 @@ export default function CoffeePairingPage() {
                   );
                 })}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <p className="font-semibold text-slate-800">Total</p>
-                  <p className="font-bold text-slate-900">
-                    {cart
-                      .reduce((sum, item) => {
-                        const pastry = selectedPastryDetails(item.pastryId);
-                        return sum + (pastry ? pastry.price * item.quantity : 0);
-                      }, 0)
-                      .toFixed(2)}{" "}
-                    EUR
-                  </p>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-800">Total</p>
+                    <p className="text-xs text-slate-500">Checkout is a mock for demo clarity.</p>
+                  </div>
+                  <p className="font-bold text-slate-900">{formatTotal(cartTotal)}</p>
                 </div>
-                <button
-                  type="button"
-                  className="w-full py-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 text-white font-semibold"
-                  onClick={handleCheckout}
-                >
-                  Checkout (mock)
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="flex-1 py-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 text-white font-semibold"
+                    onClick={handleCheckout}
+                  >
+                    Checkout (mock)
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 rounded-full border text-xs font-semibold text-slate-700"
+                    onClick={handleResetCart}
+                  >
+                    Clear cart
+                  </button>
+                </div>
                 {orderMessage && <p className="text-sm text-green-700">{orderMessage}</p>}
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-slate-800">Admin Panel (demo)</h3>
-              <span className="text-xs text-slate-500">Local only</span>
-            </div>
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Shop name</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm"
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Logo URL</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm"
-                    value={shopLogo}
-                    onChange={(e) => setShopLogo(e.target.value)}
-                  />
-                </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-800">Admin Panel</h3>
+                <p className="text-xs text-slate-500">Toggle menu and add pastries (local demo only).</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Pastry name</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm"
-                    value={newPastry.name}
-                    onChange={(e) => setNewPastry((p) => ({ ...p, name: e.target.value }))}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Vendor</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm"
-                    value={newPastry.origin}
-                    onChange={(e) => setNewPastry((p) => ({ ...p, origin: e.target.value }))}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Price (EUR)</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm"
-                    value={newPastry.price}
-                    onChange={(e) => setNewPastry((p) => ({ ...p, price: e.target.value }))}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Category / tag</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm"
-                    value={newPastry.category}
-                    onChange={(e) => setNewPastry((p) => ({ ...p, category: e.target.value }))}
-                  />
-                </div>
+              <span className="text-xs text-slate-500">
+                Active menu: {activeMenu.length}/{pastryList.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Shop name</label>
+                <input className="border rounded px-3 py-2 text-sm" value={shopName} onChange={(e) => setShopName(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Short description</label>
-                <textarea
+                <label className="text-xs font-semibold text-slate-600">Logo URL</label>
+                <input className="border rounded px-3 py-2 text-sm" value={shopLogo} onChange={(e) => setShopLogo(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Pastry name</label>
+                <input
                   className="border rounded px-3 py-2 text-sm"
-                  value={newPastry.notableDescription}
-                  onChange={(e) => setNewPastry((p) => ({ ...p, notableDescription: e.target.value }))}
+                  value={newPastry.name}
+                  onChange={(e) => setNewPastry((p) => ({ ...p, name: e.target.value }))}
                 />
               </div>
-              <button
-                type="button"
-                className="w-full py-2 rounded-full bg-slate-900 text-white font-semibold hover:bg-slate-800"
-                onClick={handleAddPastry}
-              >
-                Add pastry (demo sync)
-              </button>
-              <p className="text-xs text-slate-500">
-                Demo-only admin writes to local state to simulate instant sync. Hook to Supabase/Firebase later.
-              </p>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Vendor</label>
+                <input
+                  className="border rounded px-3 py-2 text-sm"
+                  value={newPastry.origin}
+                  onChange={(e) => setNewPastry((p) => ({ ...p, origin: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Price (EUR)</label>
+                <input
+                  className="border rounded px-3 py-2 text-sm"
+                  value={newPastry.price}
+                  onChange={(e) => setNewPastry((p) => ({ ...p, price: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Category / tag</label>
+                <input
+                  className="border rounded px-3 py-2 text-sm"
+                  value={newPastry.category}
+                  onChange={(e) => setNewPastry((p) => ({ ...p, category: e.target.value }))}
+                />
+              </div>
             </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600">Short description</label>
+              <textarea
+                className="border rounded px-3 py-2 text-sm"
+                value={newPastry.notableDescription}
+                onChange={(e) => setNewPastry((p) => ({ ...p, notableDescription: e.target.value }))}
+              />
+            </div>
+            <button
+              type="button"
+              className="w-full py-2 rounded-full bg-slate-900 text-white font-semibold hover:bg-slate-800"
+              onClick={handleAddPastry}
+            >
+              Add pastry (demo sync)
+            </button>
+
+            <div className={styles.adminList}>
+              {pastryList.map((pastry) => (
+                <div key={pastry.id} className={styles.adminItem}>
+                  <div>
+                    <p className="font-semibold text-slate-800">{pastry.name}</p>
+                    <p className="text-xs text-slate-500">{pastry.origin}</p>
+                  </div>
+                  <div className={styles.adminActions}>
+                    <span
+                      className={`${styles.statusPill} ${
+                        availability[pastry.id] !== false ? styles.statusOn : styles.statusOff
+                      }`}
+                    >
+                      {availability[pastry.id] !== false ? "On menu" : "Hidden"}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.availabilityButton}
+                      onClick={() => toggleAvailability(pastry.id)}
+                    >
+                      {availability[pastry.id] !== false ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">
+              Demo-only admin writes to local state to simulate instant sync. Hook to Supabase/Firebase later.
+            </p>
           </div>
         </div>
       </section>

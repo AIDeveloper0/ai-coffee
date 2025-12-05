@@ -25,7 +25,7 @@ export const coffees: Coffee[] = [
   {
     id: "sweetspot-standard",
     name: "Sweetspot Standard",
-    origin: "Antioquia, Colombia — Caicedo Community",
+    origin: "Antioquia, Colombia - Caicedo Community",
     tastingNotes: ["orange", "hazelnut", "caramel", "chocolate", "balanced body"],
     process: "Washed",
     variety: "Caturra, Colombia",
@@ -36,7 +36,7 @@ export const coffees: Coffee[] = [
   {
     id: "bluebird-kenia-washed-mamuto-aa",
     name: "Bluebird Kenia washed Mamuto AA",
-    origin: "Kirinyaga, Kenya — Mamuto Single Estate",
+    origin: "Kirinyaga, Kenya - Mamuto Single Estate",
     tastingNotes: ["red currants", "cherry", "bright acidity", "clean finish"],
     process: "Washed",
     variety: "SL28",
@@ -93,7 +93,7 @@ export const coffees: Coffee[] = [
   },
   {
     id: "filter-ethiopia-yirg",
-    name: "Filter — Ethiopia Yirgacheffe",
+    name: "Filter - Ethiopia Yirgacheffe",
     origin: "Yirgacheffe, Ethiopia",
     tastingNotes: ["lemon", "jasmine", "black tea", "high acidity"],
     process: "Washed",
@@ -101,7 +101,7 @@ export const coffees: Coffee[] = [
   },
   {
     id: "filter-kenya-nyeri",
-    name: "Filter — Kenya Nyeri",
+    name: "Filter - Kenya Nyeri",
     origin: "Nyeri, Kenya",
     tastingNotes: ["blackcurrant", "grapefruit", "winey"],
     process: "Washed",
@@ -149,7 +149,7 @@ export const pastries: Pastry[] = [
   },
   {
     id: "franzbrotchen",
-    name: "Franzbrötchen",
+    name: "Franzbrotchen",
     origin: "Coffee Twins",
     price: 2.6,
     currency: "EUR",

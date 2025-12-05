@@ -1,8 +1,8 @@
 .page {
   min-height: 100vh;
-  padding: 64px 16px;
+  padding: clamp(24px, 5vw, 64px) 16px 64px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   position: relative;
   overflow: hidden;
@@ -45,11 +45,11 @@
 
 .card {
   position: relative;
-  width: min(1080px, 100%);
+  width: min(1180px, 100%);
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 36px;
+  padding: clamp(22px, 4vw, 38px);
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.98);
@@ -71,6 +71,37 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.shopBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+}
+
+.shopLogo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #cbd5e1;
+}
+
+.shopInitials {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
 }
 
 .pill {
@@ -140,6 +171,57 @@
   font-weight: 700;
 }
 
+.flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.flowStep {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+}
+
+.flowStepDone {
+  border-color: #0ea5e9;
+  background: linear-gradient(135deg, #eef2ff, #e0f2fe);
+}
+
+.flowDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.flowStepDone .flowDot {
+  background: #0ea5e9;
+  box-shadow: 0 0 0 6px rgba(14, 165, 233, 0.2);
+}
+
+.flowLabel {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+}
+
+.flowValue {
+  font-size: 14px;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
 .infoPanel {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -202,6 +284,13 @@
   background: #f8fafc;
 }
 
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .howItWorks {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -222,6 +311,16 @@
 .label {
   font-size: 13px;
   font-weight: 700;
+  color: #0f172a;
+}
+
+.select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 14px;
   color: #0f172a;
 }
 
@@ -392,6 +491,32 @@
   font-size: 14px;
 }
 
+.pairingInsights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.subtlePill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.subtlePillAlt {
+  background: #e0f2fe;
+  color: #0f172a;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
@@ -500,19 +625,79 @@
   color: #475569;
 }
 
-@media (max-width: 768px) {
-  .card {
-    padding: 26px;
-  }
+.adminList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
+.adminItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.adminActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusPill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.statusOn {
+  background: #ecfdf3;
+  color: #0f172a;
+  border: 1px solid #a7f3d0;
+}
+
+.statusOff {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px dashed #cbd5e1;
+}
+
+.availabilityButton {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
   .topRow {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .flow {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
+  .card {
+    padding: 20px;
+  }
+
   .controls {
     flex-direction: column;
+  }
+
+  .field {
+    min-width: 100%;
   }
 }

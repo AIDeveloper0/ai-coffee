@@ -16,18 +16,27 @@ export const analyticsEvents: AnalyticsEvent[] = [];
 
 const MODEL = "gpt-4o-mini";
 
-function buildPrompt(coffee: Coffee, pastries: Pastry[]): string {
+type ParsedPairing = {
+  pastryId: string;
+  reason: string;
+  match?: string[];
+  contrast?: string[];
+};
+
+function buildPrompt(coffee: Coffee, pastries: Pastry[], contextNote?: string): string {
   const pastryList = pastries
     .map(
       (p) =>
-        `${p.id}: ${p.name} — price ${p.price.toFixed(2)} ${p.currency}; ${p.notableDescription}; notes ${p.tastingNotes.join(", ")}`
+        `${p.id}: ${p.name} - price ${p.price.toFixed(2)} ${p.currency}; ${p.notableDescription}; notes ${p.tastingNotes.join(", ")}`
     )
     .join("\n");
 
   return [
-    "You are a barista pairing assistant. Given one coffee and a list of pastries, return the best 2–3 pastry pairings.",
-    "Use JSON only (no markdown), shape: [{\"pastryId\": string, \"reason\": string}].",
-    "Consider flavor contrast/complement, texture, sweetness, and cultural fit.",
+    "You are a barista pairing assistant. Given one coffee and a list of pastries, return the best 2-3 pastry pairings.",
+    "Respond with JSON only (no markdown) using the shape: {\"pairings\":[{\"pastryId\":string,\"reason\":string,\"match\":string[],\"contrast\":string[]}]}",
+    "Reason briefly for each pastry and call out which coffee tasting notes it matches versus contrasts.",
+    "Prefer concise, declarative sentences that a barista can repeat to a guest.",
+    contextNote ? `Context note from barista: ${contextNote}` : "",
     "",
     `Coffee: ${coffee.name} | origin: ${coffee.origin} | notes: ${coffee.tastingNotes.join(", ")}`,
     "",
@@ -47,7 +56,32 @@ async function fetchFromOpenAI(prompt: string, apiKey: string) {
       model: MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.5,
-      response_format: { type: "json_object" },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "pairing_response",
+          schema: {
+            type: "object",
+            properties: {
+              pairings: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["pastryId", "reason"],
+                  properties: {
+                    pastryId: { type: "string" },
+                    reason: { type: "string" },
+                    match: { type: "array", items: { type: "string" } },
+                    contrast: { type: "array", items: { type: "string" } },
+                  },
+                },
+              },
+            },
+            required: ["pairings"],
+            additionalProperties: true,
+          },
+        },
+      },
     }),
   });
 
@@ -60,12 +94,17 @@ async function fetchFromOpenAI(prompt: string, apiKey: string) {
   }>;
 }
 
-function parsePairings(content: string | undefined) {
+function parsePairings(content: string | undefined): ParsedPairing[] {
   if (!content) return [];
   try {
     const parsed = JSON.parse(content);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as { pastryId: string; reason: string }[];
+    const list = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as { pairings?: unknown }).pairings)
+      ? (parsed as { pairings: ParsedPairing[] }).pairings
+      : null;
+    if (!list) return [];
+    return list;
   } catch {
     return [];
   }
@@ -85,8 +124,8 @@ function mockPairings(coffee: Coffee, pastries: Pastry[]): PairingResult[] {
     .map((pastry) => ({
       pastry,
       reason: isSweetspot
-        ? "Caramel and spice play well with the blend’s chocolate-hazelnut notes."
-        : "Butter and warm spice cushion bright berry acidity.",
+        ? "Caramel, hazelnut, and citrus in the blend pair with pastry spice and butter for balance."
+        : "Butter and warm spice cushion brighter fruit acidity while keeping sweetness in check.",
     }));
 }
 
@@ -124,17 +163,25 @@ export async function getPairings(
   try {
     const prompt = buildPrompt(
       { ...coffee, tastingNotes: contextNote ? [...coffee.tastingNotes, contextNote] : coffee.tastingNotes },
-      pastries
+      pastries,
+      contextNote
     );
     const data = await fetchFromOpenAI(prompt, apiKey);
     const raw = parsePairings(data.choices?.[0]?.message?.content);
 
     const pastryById = new Map(pastries.map((p) => [p.id, p]));
     const results: PairingResult[] = raw
-      .map(({ pastryId, reason }) => {
+      .map(({ pastryId, reason, match, contrast }) => {
         const pastry = pastryById.get(pastryId);
         if (!pastry || !reason) return null;
-        return { pastry, reason };
+        const detail = [
+          reason,
+          match && match.length ? `Match: ${match.join(", ")}` : "",
+          contrast && contrast.length ? `Contrast: ${contrast.join(", ")}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | ");
+        return { pastry, reason: detail || reason };
       })
       .filter((item): item is PairingResult => Boolean(item));
 

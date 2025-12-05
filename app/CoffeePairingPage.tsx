@@ -61,6 +61,7 @@ export default function CoffeePairingPage() {
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
   const [lastDurationMs, setLastDurationMs] = useState<number | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [newPastry, setNewPastry] = useState({
     name: "",
@@ -75,6 +76,7 @@ export default function CoffeePairingPage() {
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedCoffee: Coffee | undefined = useMemo(
     () => coffeeList.find((c) => c.id === selectedCoffeeId),
@@ -137,6 +139,14 @@ export default function CoffeePairingPage() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleGetPairings = async () => {
     if (!selectedCoffee) return;
     if (activeMenu.length === 0) {
@@ -192,16 +202,19 @@ export default function CoffeePairingPage() {
     }
   };
 
-  const handleAddToCart = (pastryId: string) => {
+  const handleAddToCart = (pastry: Pastry) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.pastryId === pastryId);
+      const existing = prev.find((item) => item.pastryId === pastry.id);
       if (existing) {
         return prev.map((item) =>
-          item.pastryId === pastryId ? { ...item, quantity: item.quantity + 1 } : item
+          item.pastryId === pastry.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { pastryId, quantity: 1 }];
+      return [...prev, { pastryId: pastry.id, quantity: 1 }];
     });
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(`Added ${pastry.name} to cart`);
+    toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 2500);
   };
 
   const handleQuantityChange = (pastryId: string, delta: number) => {
@@ -610,10 +623,10 @@ export default function CoffeePairingPage() {
                         </div>
                         <button
                           type="button"
-                          className="px-3 py-1 rounded-full bg-slate-100 text-slate-900 font-semibold text-xs hover:bg-blue-50 hover:text-blue-700 transition"
+                          className="px-3 py-1 rounded-full bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition flex items-center gap-1"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAddToCart(pastry.id);
+                            handleAddToCart(pastry);
                             logEvent({
                               type: "add_to_cart",
                               coffeeId: selectedCoffee.id,
@@ -621,7 +634,7 @@ export default function CoffeePairingPage() {
                             });
                           }}
                         >
-                          Pair
+                          Add to cart
                         </button>
                       </div>
                     </div>
@@ -850,6 +863,12 @@ export default function CoffeePairingPage() {
           </div>
         </div>
       </section>
+
+      {toastMessage && (
+        <div className={styles.toast} role="status" aria-live="polite">
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 }
